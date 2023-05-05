@@ -6,12 +6,9 @@
 1. Clone the repo
 2. Make sure you have `python3.9` and `pip3` installed and optionally docker if you plan to use `redis` and `postgresql`
 3. `make init` - will set up virtual environment and requirements
-4. Run `docker-compose up -d` to start redis & postgres
-5. Activate `venv` with `. venv/bin/activate`
-6. Run `./manage.py migrate' etc as needed
-7. `./manage.py runserver_plus`
+4. Run `sh ./tools/start-server.sh` to start the server
 
-The project comes with pre-defined run targets for the `migrate` and `runserver_plus`
+The project comes with pre-defined run targets for the `migrate` and `runserver`
 
 To run a chat example you need:
 

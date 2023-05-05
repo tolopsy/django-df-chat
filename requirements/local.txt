@@ -343,7 +343,7 @@ factory-boy==3.2.1
     # via -r requirements/local.in
 faker==18.6.2
     # via factory-boy
-fcm-django==1.0.14
+fcm-django==1.0.12
     # via
     #   -r requirements/project.txt
     #   django-df-notifications

@@ -229,7 +229,7 @@ drf-spectacular-sidecar==2023.5.1
     # via drf-spectacular
 et-xmlfile==1.1.0
     # via openpyxl
-fcm-django==1.0.14
+fcm-django==1.0.12
     # via
     #   -r requirements/base.in
     #   django-df-notifications

@@ -49,7 +49,8 @@ CORS_ALLOW_ALL_ORIGINS = True
 CORS_URLS_REGEX = r"^/api/.*$"
 CORS_ALLOW_HEADERS = cors_default_headers + ("accept-language", "cache-control")
 
-# Uncomment to use sqlite by default
-# DATABASES = {
-#     "default": env.db("DATABASE_URL", default=f"sqlite:////{BASE_DIR}/database.sqlite"),
-# }
+DATABASES = {
+    "default": env.db("DATABASE_URL", default=f"sqlite:////{BASE_DIR}/database.sqlite"),
+}
+
+CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}}

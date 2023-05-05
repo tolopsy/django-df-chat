@@ -46,7 +46,7 @@ drf-spectacular[sidecar]
 
 # Firebase
 firebase-admin
-fcm-django
+fcm-django==1.0.12
 grpcio-status==1.48.1  # Because actual version 1.50.0 hangs during pip install
 grpcio==1.48.1  # Because actual version 1.50.0 hangs during pip install
 
