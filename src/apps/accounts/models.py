@@ -53,6 +53,7 @@ class User(AbstractUser):
         upload_to="images/avatars",
     )
     email = models.EmailField(_("email address"), unique=True, db_index=True)
+    display_name = models.CharField(max_length=255, default="")
 
     def __str__(self):
         return self.email
