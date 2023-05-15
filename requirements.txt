@@ -20,5 +20,6 @@ fcm-django<=1.0.12
 
 django-df-auth
 
+factory-boy
 pytest
 pytest-django
