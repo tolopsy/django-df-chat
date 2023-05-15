@@ -61,6 +61,11 @@ class MessageImageSerializer(serializers.ModelSerializer):
     )
     room_id = HashidSerializerCharField(source_field="df_chat.Room.id", required=False)
     name = serializers.SerializerMethodField()
+    size = serializers.SerializerMethodField()
+
+    def get_size(self, obj: MessageImage) -> Optional[int]:
+        if obj.image:
+            return obj.image.size
 
     class Meta:
         model = MessageImage
@@ -68,6 +73,7 @@ class MessageImageSerializer(serializers.ModelSerializer):
             "height",
             "width",
             "name",
+            "size",
         )
         fields = ("id", "message_id", "room_id", "image", *read_only_fields)
 
