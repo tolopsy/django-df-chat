@@ -49,7 +49,7 @@
             const messageInputDom = document.querySelector('#chat-message-input');
             const message = messageInputDom.value;
 
-            fetch(`/api/chat/rooms/${roomName}/messages/`, {
+            fetch(`/api/v1/chat/rooms/${roomName}/messages/`, {
               method: 'POST',
               headers: {
                 'Accept': 'application/json',
@@ -67,7 +67,7 @@
             const messageInputDom = document.querySelector('#chat-message-input');
             const message = messageInputDom.value;
 
-            fetch(`/api/chat/rooms/${roomName}/messages/`, {
+            fetch(`/api/v1/chat/rooms/${roomName}/messages/`, {
               method: 'POST',
               headers: {
                 'Accept': 'application/json',
