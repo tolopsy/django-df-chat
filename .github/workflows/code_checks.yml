@@ -1,0 +1,17 @@
+name: code_checks
+on: [pull_request]
+jobs:
+  unit_tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          ref: ${{ github.head_ref }}
+      - uses: actions/setup-python@v2
+        with:
+          python-version: "3.9"
+      - run: python -m venv venv
+      - run: pip install -r requirements.txt
+      - run: source venv/bin/activate
+      - run: python manage.py migrate
+      - run: python manage.py test
