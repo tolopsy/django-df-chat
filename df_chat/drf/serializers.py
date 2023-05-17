@@ -65,7 +65,10 @@ class MessageImageSerializer(serializers.ModelSerializer):
 
     def get_size(self, obj: MessageImage) -> Optional[int]:
         if obj.image:
-            return obj.image.size
+            try:
+                return obj.image.size
+            except OSError:
+                return 0
 
     class Meta:
         model = MessageImage

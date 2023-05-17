@@ -133,3 +133,6 @@ dmypy.json
 
 # visual studio code
 .vscode/*
+
+mediafiles/
+staticfiles/

@@ -1,4 +1,9 @@
+from pathlib import Path
+
+
 DEBUG = True
+
+ROOT_DIR = Path(__file__).resolve(strict=True).parent.parent
 
 ROOT_URLCONF = "tests.urls"
 SECRET_KEY = "111111"
@@ -80,6 +85,10 @@ LOGGING = {
 }
 
 STATIC_URL = "/static/"
+STATIC_ROOT = str(ROOT_DIR / "staticfiles")
+
+MEDIA_URL = "/media/"
+MEDIA_ROOT = str(ROOT_DIR / "mediafiles")
 
 ALLOWED_HOSTS = ["*"]
 
