@@ -18,6 +18,36 @@ from typing import List
 User = get_user_model()
 
 
+class UserChatManager(models.Manager):
+    def get_user_chat(self, user_pk: int) -> "UserChat":
+        """
+        In order to use the chat application, a user must be associated with a UserChat object.
+        However, we do not want to create a UserChat object for every user that is added to the system.
+        Instead, we only want to create a UserChat object when the user is connected to our chat application.
+        """
+        user_chat, _ = self.get_or_create(
+            user_id=user_pk,
+        )
+        return user_chat
+
+
+class UserChat(models.Model):
+    """
+    This model stores attributes that should be visible across all rooms for a user.
+    For example, if a user is online, we set the 'is_online' flag on this model for that user,
+    which will then be visible to all the rooms that the user is a part of.
+    """
+
+    user = models.OneToOneField(
+        User, related_name="user_chat", on_delete=models.CASCADE
+    )
+    is_online = models.BooleanField(default=False)
+    objects = UserChatManager()
+
+    def __str__(self):
+        return str(self.user)
+
+
 class RoomQuerySet(models.QuerySet):
     def filter_for_user(self, user):
         return self.filter(
@@ -102,8 +132,19 @@ class RoomUser(models.Model):
         help_text="Leave empty for a system message",
     )
     is_active = models.BooleanField(default=True)
-    is_online = models.BooleanField(default=True)
     objects = RoomUserManager()
+
+    @property
+    def is_online(self):
+        """
+        A RoomUser could be an actual user or a system.
+        Here, we infer that a user is online only if they have a UserChat associated with them.
+        """
+        return (
+            self.user
+            and hasattr(self.user, "user_chat")
+            and self.user.user_chat.is_online
+        )
 
     def __str__(self):
         return f"{self.room}: {self.user}"
@@ -181,7 +222,7 @@ class MessageNotificationRule(NotificationModelAsyncRule):
             User.objects.filter(
                 roomuser__room=instance.room_user.room,
                 roomuser__is_active=True,
-                roomuser__is_online=False,
+                roomuser__user__user_chat__is_online=False,
             )
             .exclude(id=instance.room_user.user.id if instance.room_user.user else None)
             .exclude(id__in=instance.room_user.room.muted_by.values("id"))

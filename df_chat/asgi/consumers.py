@@ -5,6 +5,7 @@ from df_chat.drf.serializers import RoomUserSerializer
 from df_chat.models import Message
 from df_chat.models import Room
 from df_chat.models import RoomUser
+from df_chat.models import UserChat
 from djangochannelsrestframework.generics import GenericAsyncAPIConsumer
 from djangochannelsrestframework.observer import model_observer
 from djangochannelsrestframework.observer import ModelObserver
@@ -113,21 +114,20 @@ class RoomConsumer(GenericAsyncAPIConsumer):
 
     @database_sync_to_async
     def user_connect(self):
+        user_chat = UserChat.objects.get_user_chat(self.user.pk)
+        if not user_chat.is_online:
+            user_chat.is_online = True
+            user_chat.save()
         room_user = RoomUser.objects.get_room_user(
             room_pk=self.room_id,
             user_pk=self.user.pk,
         )
-        if not room_user.is_online:
-            room_user.is_online = True
-            room_user.save()
         self.room_user = room_user
 
     @database_sync_to_async
     def user_disconnect(self):
         if self.user.is_authenticated:
-            room_user = RoomUser.objects.filter(
-                user=self.scope["user"], room_id=self.room_id, is_active=True
-            ).first()
-            if room_user:
-                room_user.is_online = False
-                room_user.save()
+            user_chat = UserChat.objects.get_user_chat(self.user.pk)
+            if user_chat.is_online:
+                user_chat.is_online = False
+                user_chat.save()
