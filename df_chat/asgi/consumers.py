@@ -113,21 +113,21 @@ class RoomConsumer(GenericAsyncAPIConsumer):
 
     @database_sync_to_async
     def user_connect(self):
-        user = RoomUser.objects.get_room_user(
+        room_user = RoomUser.objects.get_room_user(
             room_pk=self.room_id,
             user_pk=self.user.pk,
         )
-        if not user.is_online:
-            user.is_online = True
-            user.save()
-        self.room_user = user
+        if not room_user.is_online:
+            room_user.is_online = True
+            room_user.save()
+        self.room_user = room_user
 
     @database_sync_to_async
     def user_disconnect(self):
         if self.user.is_authenticated:
-            user = RoomUser.objects.filter(
+            room_user = RoomUser.objects.filter(
                 user=self.scope["user"], room_id=self.room_id, is_active=True
             ).first()
-            if user:
-                user.is_online = False
-                user.save()
+            if room_user:
+                room_user.is_online = False
+                room_user.save()
