@@ -10,6 +10,7 @@ from df_chat.tests.utils import UserFactory
 from django.test import TransactionTestCase
 from rest_framework.reverse import reverse
 from tests.asgi import application
+from uuid import uuid4
 
 
 class TestChat(TransactionTestCase):
@@ -51,7 +52,7 @@ class TestChat(TransactionTestCase):
         Ensures that the authenticated user is added to the scope of the websocket consumer.
         """
         communicator = WebsocketCommunicator(
-            application, f"ws/chat/{self.room.id}/?token={self.token1}"
+            application, f"ws/chat/?token={self.token1}"
         )
         connected, _ = await communicator.connect()
         self.assertTrue(connected)
@@ -66,29 +67,43 @@ class TestChat(TransactionTestCase):
         """
         # connecting our first user to the chat websocket endpoint
         communicator1 = WebsocketCommunicator(
-            application, f"ws/chat/{self.room.id}/?token={self.token1}"
+            application, f"ws/chat/?token={self.token1}"
         )
         await communicator1.connect()
 
         # As of now, there are no messages in the room
         # The WebsocketCommunicator.receive_nothing returns a True, if there is no message to receive.
         self.assertTrue(await communicator1.receive_nothing())
-        room_user1 = await database_sync_to_async(RoomUser.objects.get)(
-            room=self.room, user=self.user1
+
+        #  Lets subscribe user1 to the room, so that the user1 is notified when there is any activity in the room.
+        await communicator1.send_json_to(
+            {
+                "action": "subscribe_to_room_activity",
+                "request_id": str(uuid4()),
+                "room_pk": str(self.room.id),
+            }
         )
 
         # connecting our second user to the chat websocket endpoint
         communicator2 = WebsocketCommunicator(
-            application, f"ws/chat/{self.room.id}/?token={self.token2}"
+            application, f"ws/chat/?token={self.token2}"
         )
         await communicator2.connect()
-        room_user2 = await database_sync_to_async(RoomUser.objects.get)(
-            room=self.room, user=self.user2
+        #  Also subscribing user2 to the room.
+        await communicator2.send_json_to(
+            {
+                "action": "subscribe_to_room_activity",
+                "request_id": str(uuid4()),
+                "room_pk": str(self.room.id),
+            }
         )
 
         # When another user connects to a room, the first user will receive a json dict stating that a user
-        # has connected to the room
+        # has joined the room. Here user2 has subscribed to the room, so user1 will be notified.
         event = await communicator1.receive_json_from()
+        room_user2 = await database_sync_to_async(RoomUser.objects.get)(
+            room=self.room, user=self.user2
+        )
         self.assertEqual(
             event["users"][0],
             {
@@ -101,6 +116,10 @@ class TestChat(TransactionTestCase):
         )
         # But, no messages are sent by the second user.
         self.assertEqual(len(event["messages"]), 0)
+
+        room_user1 = await database_sync_to_async(RoomUser.objects.get)(
+            room=self.room, user=self.user1
+        )
 
         # If a Message object is created, it should be received by both users
         await database_sync_to_async(Message.objects.create)(
