@@ -47,7 +47,7 @@ class RoomConsumer(GenericAsyncAPIConsumer):
         await self.room_user_activity.unsubscribe()
         await self.user_disconnect()
 
-    @model_observer(RoomUser)
+    @model_observer(RoomUser, serializer_class=RoomUserSerializer)
     async def room_user_activity(self, message: dict, **kwargs):
         self._resolve_is_me(message)
         await self.send_json(
@@ -69,12 +69,7 @@ class RoomConsumer(GenericAsyncAPIConsumer):
     def room_user_activity(self, consumer, **kwargs):
         yield f"-room__{consumer.room_id}"
 
-    @room_user_activity.serializer
-    def room_user_activity(self, instance: RoomUser, action, **kwargs) -> dict:
-        """This will return the room_user serializer"""
-        return RoomUserSerializer(instance).data
-
-    @model_observer(Message)
+    @model_observer(Message, serializer_class=MessageSerializer)
     async def message_activity(self, message: dict, **kwargs):
         self._resolve_is_me(message)
         for reaction in message["reactions"]:
@@ -96,11 +91,6 @@ class RoomConsumer(GenericAsyncAPIConsumer):
     @message_activity.groups_for_consumer
     def message_activity(self, consumer, **kwargs):
         yield f"-room__{consumer.room_id}"
-
-    @message_activity.serializer
-    def message_activity(self, instance: Message, action, **kwargs) -> dict:
-        """This will return the message serializer"""
-        return MessageSerializer(instance).data
 
     def _resolve_is_me(self, message: dict):
         if not isinstance(message["is_me"], bool):
