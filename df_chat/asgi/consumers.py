@@ -55,7 +55,7 @@ class RoomsConsumer(GenericAsyncAPIConsumer):
 
     @model_observer(RoomUser, serializer_class=RoomUserSerializer)
     async def room_user_activity(self, message: dict, **kwargs):
-        await self._resolve_is_me(message)
+        self._resolve_is_me(message)
         await self.send_json(
             {
                 "messages": [],
@@ -109,9 +109,9 @@ class RoomsConsumer(GenericAsyncAPIConsumer):
 
     @model_observer(Message, serializer_class=MessageSerializer)
     async def message_activity(self, message: dict, **kwargs):
-        await self._resolve_is_me(message)
+        self._resolve_is_me(message)
         for reaction in message["reactions"]:
-            await self._resolve_is_me(reaction)
+            self._resolve_is_me(reaction)
 
         # Do not send empty messages and reactions
         if (message["body"] or message["images"]) and not message["is_reaction"]:
@@ -130,13 +130,9 @@ class RoomsConsumer(GenericAsyncAPIConsumer):
     def message_activity(self, consumer, room_pk: str, **kwargs):
         yield f"-rooms__{room_pk}"
 
-    @database_sync_to_async
     def _resolve_is_me(self, message: dict):
         if not isinstance(message["is_me"], bool):
-            # TODO: IMPROVEMENT: There should find a way to not run a database query here
-            message["is_me"] = self.user.roomuser_set.filter(
-                id=message["is_me"]
-            ).exists()
+            message["is_me"] = message["is_me"] == self.user.pk
 
     @database_sync_to_async
     def user_connect(self):

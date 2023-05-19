@@ -12,6 +12,7 @@ from rest_framework.relations import ManyRelatedField
 from rest_framework.relations import PrimaryKeyRelatedField
 from rest_framework_recursive.fields import RecursiveField
 from typing import Optional
+from typing import Union
 
 
 User = get_user_model()
@@ -109,12 +110,15 @@ class MessageImageSerializer(serializers.ModelSerializer):
 
 
 class MessageSerializer(serializers.ModelSerializer):
-    def get_is_me(self, obj) -> Optional[bool]:
+    def get_is_me(self, obj) -> Optional[Union[bool, int]]:
         if self.context.get("request"):
             return self.context["request"].user.id == obj.room_user.user_id
 
         # In case of ws we will resolve user_id -> is_me later
-        return str(obj.room_user_id)
+        if obj.room_user.user_id:
+            return obj.room_user.user_id
+        # If a user_id is not present on the room user, it means that it is a system message.
+        return None
 
     id = HashidSerializerCharField(read_only=True)
     parent_id = HashidSerializerCharField(
