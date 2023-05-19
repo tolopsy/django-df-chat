@@ -2,7 +2,14 @@ from .models import Message
 from .models import MessageImage
 from .models import Room
 from .models import RoomUser
+from .models import UserChat
 from django.contrib import admin
+
+
+@admin.register(UserChat)
+class UserChatAdmin(admin.ModelAdmin):
+    list_display = ("user", "is_online")
+    list_filter = ("is_online",)
 
 
 class RoomUserInline(admin.TabularInline):
@@ -11,8 +18,8 @@ class RoomUserInline(admin.TabularInline):
 
 @admin.register(RoomUser)
 class RoomUserAdmin(admin.ModelAdmin):
-    list_display = ("room", "user", "is_active", "is_online")
-    list_filter = ("is_active", "is_online", "room__title")
+    list_display = ("room", "user", "is_active")
+    list_filter = ("is_active", "room__title")
 
 
 @admin.register(Room)

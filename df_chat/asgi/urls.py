@@ -3,5 +3,5 @@ from django.urls import re_path
 
 
 urlpatterns = [
-    re_path(r"(?P<room_id>\w+)/$", consumers.RoomConsumer.as_asgi()),
+    re_path("", consumers.RoomsConsumer.as_asgi()),
 ]

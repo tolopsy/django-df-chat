@@ -9,4 +9,4 @@ class ChatConfig(AppConfig):
 
     def ready(self) -> None:
         # Trigger registering signals for model observers
-        from df_chat.asgi.consumers import RoomConsumer  # noqa
+        from df_chat.asgi.consumers import RoomsConsumer  # noqa

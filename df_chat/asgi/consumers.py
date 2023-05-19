@@ -5,9 +5,12 @@ from df_chat.drf.serializers import RoomUserSerializer
 from df_chat.models import Message
 from df_chat.models import Room
 from df_chat.models import RoomUser
+from df_chat.models import UserChat
+from djangochannelsrestframework.decorators import action
 from djangochannelsrestframework.generics import GenericAsyncAPIConsumer
 from djangochannelsrestframework.observer import model_observer
 from djangochannelsrestframework.observer import ModelObserver
+from typing import List
 
 
 def post_init_receiver(self, instance, **kwargs):
@@ -17,36 +20,40 @@ def post_init_receiver(self, instance, **kwargs):
 ModelObserver.post_init_receiver = post_init_receiver
 
 
-class RoomConsumer(GenericAsyncAPIConsumer):
+class RoomsConsumer(GenericAsyncAPIConsumer):
+    """
+    A websocket consumer to allow users to listen to all activities in rooms.
+
+    Once connected to the websocket, we automatically subscribe to all the rooms, the user is part of.
+    So, the user will be able to listen to activities across his rooms, without having to use multiple connections.
+    """
+
     queryset = Room.objects.all()
     serializer_class = RoomSerializer
     user = None
 
     async def connect(self):
-        self.room_id = self.scope["url_route"]["kwargs"]["room_id"]
         self.user = self.scope["user"]
 
         if not self.user.is_authenticated:
             await self.close()
             return
 
-        await self.check_room()
         await self.user_connect()
+        await self.subscribe_to_rooms_activities()
         # TODO(eugapx) subscribe to group for this room only instead of one global group
         # so that when you broadcast messages you broarcast them only to the consumers in one room
         # instead of broadcasting all messages to all consumers
         # so that peeople in private group can't hack messages in private group that they receive
 
-        await self.room_user_activity.subscribe()
-        await self.message_activity.subscribe()
         await self.accept()
 
     async def disconnect(self, close_code):
-        await self.message_activity.unsubscribe()
-        await self.room_user_activity.unsubscribe()
+        # When the user disconnects, we should unsubscribe them from listening to all activities.
+        await self.unsubscribe_from_all_activities()
         await self.user_disconnect()
 
-    @model_observer(RoomUser)
+    @model_observer(RoomUser, serializer_class=RoomUserSerializer)
     async def room_user_activity(self, message: dict, **kwargs):
         self._resolve_is_me(message)
         await self.send_json(
@@ -65,15 +72,42 @@ class RoomConsumer(GenericAsyncAPIConsumer):
         yield f"-room__{instance.room_id}"
 
     @room_user_activity.groups_for_consumer
-    def room_user_activity(self, consumer, **kwargs):
-        yield f"-room__{consumer.room_id}"
+    def room_user_activity(self, consumer, room_pk: str):
+        yield f"-room__{room_pk}"
 
-    @room_user_activity.serializer
-    def room_user_activity(self, instance: RoomUser, action, **kwargs) -> dict:
-        """This will return the room_user serializer"""
-        return RoomUserSerializer(instance).data
+    @database_sync_to_async
+    def get_rooms(self):
+        rooms = self.user.room_set.all()
+        # ensure that RoomUser objects are created for the user, for all the Rooms he is part of.
+        for room in rooms:
+            # TODO: IMPROVEMENT: A user could be part of multiple rooms. There should be a way to execute this iteration as a batch.
+            RoomUser.objects.get_or_create(
+                room=room,
+                user=self.user,
+            )
+        return rooms
 
-    @model_observer(Message)
+    async def subscribe_to_rooms_activities(self, **kwargs):
+        """
+        Subscribe to all rooms.
+        """
+        rooms = await self.get_rooms()
+        for room in rooms:
+            # subscribe to activities occuring on the RoomUser object
+            await self.room_user_activity.subscribe(room_pk=room.pk)
+            # subscribe to messages being created/updated in a room.
+            await self.message_activity.subscribe(room_pk=room.pk)
+
+    async def unsubscribe_from_all_activities(self, **kwargs):
+        """
+        Unsubscribe from all rooms
+        """
+        rooms = await self.get_rooms()
+        for room in rooms:
+            await self.room_user_activity.unsubscribe(room_pk=room.pk)
+            await self.message_activity.unsubscribe(room_pk=room.pk)
+
+    @model_observer(Message, serializer_class=MessageSerializer)
     async def message_activity(self, message: dict, **kwargs):
         self._resolve_is_me(message)
         for reaction in message["reactions"]:
@@ -90,44 +124,27 @@ class RoomConsumer(GenericAsyncAPIConsumer):
 
     @message_activity.groups_for_signal
     def message_activity(self, instance: Message, **kwargs):
-        yield f"-room__{instance.room_user.room_id}"
+        yield f"-rooms__{instance.room_user.room.id}"
 
     @message_activity.groups_for_consumer
-    def message_activity(self, consumer, **kwargs):
-        yield f"-room__{consumer.room_id}"
-
-    @message_activity.serializer
-    def message_activity(self, instance: Message, action, **kwargs) -> dict:
-        """This will return the message serializer"""
-        return MessageSerializer(instance).data
+    def message_activity(self, consumer, room_pk: str, **kwargs):
+        yield f"-rooms__{room_pk}"
 
     def _resolve_is_me(self, message: dict):
         if not isinstance(message["is_me"], bool):
-            message["is_me"] = message["is_me"] == str(self.room_user.id)
-
-    @database_sync_to_async
-    def check_room(self):
-        self.room = Room.objects.filter_for_user(self.scope["user"]).get(
-            pk=self.room_id
-        )
+            message["is_me"] = message["is_me"] == self.user.pk
 
     @database_sync_to_async
     def user_connect(self):
-        user = RoomUser.objects.get_room_user(
-            room_pk=self.room_id,
-            user_pk=self.user.pk,
-        )
-        if not user.is_online:
-            user.is_online = True
-            user.save()
-        self.room_user = user
+        user_chat = UserChat.objects.get_user_chat(self.user.pk)
+        if not user_chat.is_online:
+            user_chat.is_online = True
+            user_chat.save()
 
     @database_sync_to_async
     def user_disconnect(self):
         if self.user.is_authenticated:
-            user = RoomUser.objects.filter(
-                user=self.scope["user"], room_id=self.room_id, is_active=True
-            ).first()
-            if user:
-                user.is_online = False
-                user.save()
+            user_chat = UserChat.objects.get_user_chat(self.user.pk)
+            if user_chat.is_online:
+                user_chat.is_online = False
+                user_chat.save()
