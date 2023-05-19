@@ -1,6 +1,4 @@
 from channels.db import database_sync_to_async
-
-# The WebsocketCommunicator provides convenient methods to simplify the process of connecting to a websocket.
 from channels.testing import WebsocketCommunicator
 from df_chat.models import Message
 from df_chat.models import RoomUser
@@ -145,7 +143,7 @@ class TestChat(TransactionTestCase):
         room_of_user1_and_user2 = await self.create_room_and_add_users(user1, user2)
         room_of_user1_and_user3 = await self.create_room_and_add_users(user1, user3)
 
-        ## connecting the first, second and third users to the chat websocket endpoint, simultaneously
+        # connecting the first, second and third users to the chat websocket endpoint, simultaneously
         communicator1 = WebsocketCommunicator(application, f"ws/chat/?token={token1}")
         await communicator1.connect()
         communicator2 = WebsocketCommunicator(application, f"ws/chat/?token={token2}")
@@ -191,7 +189,7 @@ class TestChat(TransactionTestCase):
             room_of_user1_and_user3.pk,
         )
 
-        ### Testing Messages
+        # ### Testing Messages
         # If user3 creates a message in room_of_user1_and_user2,
         # user1 and user2 should be notified, but user3 should not be notified.
         await database_sync_to_async(Message.objects.create)(
@@ -250,7 +248,8 @@ class TestChat(TransactionTestCase):
         await communicator3.disconnect()
 
 
-# TODO: Trying to connect without providing a token results in an error "ValueError: 'AnonymousUser' value must be a positive integer or a valid Hashids string."
+# TODO: Trying to connect without providing a token results in an error
+#  "ValueError: 'AnonymousUser' value must be a positive integer or a valid Hashids string."
 # We should return a permission denied message via the websocket and gracefully disconnect the user.
 # TODO: In the current approach, in order to create a message in a room, a user should make a HTTP POST request.
 # And then the message is propagated to all the listeners in that room.

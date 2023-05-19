@@ -6,11 +6,9 @@ from df_chat.models import Message
 from df_chat.models import Room
 from df_chat.models import RoomUser
 from df_chat.models import UserChat
-from djangochannelsrestframework.decorators import action
 from djangochannelsrestframework.generics import GenericAsyncAPIConsumer
 from djangochannelsrestframework.observer import model_observer
 from djangochannelsrestframework.observer import ModelObserver
-from typing import List
 
 
 def post_init_receiver(self, instance, **kwargs):
