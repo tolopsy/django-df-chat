@@ -2,44 +2,15 @@ from channels.db import database_sync_to_async
 from channels.testing import WebsocketCommunicator
 from df_chat.models import Message
 from df_chat.models import RoomUser
-from df_chat.models import User
-from df_chat.tests.utils import RoomFactory
-from df_chat.tests.utils import TEST_USER_PASSWORD
-from df_chat.tests.utils import UserFactory
+from df_chat.tests.base import BaseTestUtilsMixin
 from django.test import TransactionTestCase
-from rest_framework.reverse import reverse
 from tests.asgi import application
-from typing import Tuple
 
 
-class TestChat(TransactionTestCase):
+class TestChat(TransactionTestCase, BaseTestUtilsMixin):
     """
     Test for chat appplication
     """
-
-    @database_sync_to_async
-    def create_user(self) -> Tuple[User, str]:
-        """
-        Creates a User object and generates an auth token for the user.
-        """
-        user = UserFactory()
-        # User has to use an authentication token in order to connect with the websocket endpoint.
-        auth_token_url = reverse("token-list")
-        response = self.client.post(
-            auth_token_url,
-            data={"username": user.username, "password": TEST_USER_PASSWORD},
-        )
-        token = response.json()["token"]
-        return user, token
-
-    @database_sync_to_async
-    def create_room_and_add_users(self, *users):
-        """
-        Creates a Room object and adds the users to it.
-        """
-        room = RoomFactory()
-        room.users.set(users)
-        return room
 
     async def test_invalid_websocket_path(self):
         """
@@ -53,7 +24,7 @@ class TestChat(TransactionTestCase):
         """
         Ensures that the authenticated user is added to the scope of the websocket consumer.
         """
-        user, token = await self.create_user()
+        user, token = await self.async_create_user()
         communicator = WebsocketCommunicator(application, f"ws/chat/?token={token}")
         connected, _ = await communicator.connect()
         self.assertTrue(connected)
@@ -66,9 +37,9 @@ class TestChat(TransactionTestCase):
         An end-to-end test case to test the happy-path-flow of a chat between two users in a single room.
         """
         # creating a room with two users
-        user1, token1 = await self.create_user()
-        user2, token2 = await self.create_user()
-        room = await self.create_room_and_add_users(user2, user1)
+        user1, token1 = await self.async_create_user()
+        user2, token2 = await self.async_create_user()
+        room = await self.async_create_room_and_add_users(user2, user1)
 
         # connecting our first user to the chat websocket endpoint
         communicator1 = WebsocketCommunicator(application, f"ws/chat/?token={token1}")
@@ -136,12 +107,16 @@ class TestChat(TransactionTestCase):
         An end-to-end test case to test the happy-path-flow of a chat for a user connected to multiple rooms.
         """
         # creating three users
-        user1, token1 = await self.create_user()
-        user2, token2 = await self.create_user()
-        user3, token3 = await self.create_user()
+        user1, token1 = await self.async_create_user()
+        user2, token2 = await self.async_create_user()
+        user3, token3 = await self.async_create_user()
         # creating two rooms, where user1 is present in both.
-        room_of_user1_and_user2 = await self.create_room_and_add_users(user1, user2)
-        room_of_user1_and_user3 = await self.create_room_and_add_users(user1, user3)
+        room_of_user1_and_user2 = await self.async_create_room_and_add_users(
+            user1, user2
+        )
+        room_of_user1_and_user3 = await self.async_create_room_and_add_users(
+            user1, user3
+        )
 
         # connecting the first, second and third users to the chat websocket endpoint, simultaneously
         communicator1 = WebsocketCommunicator(application, f"ws/chat/?token={token1}")
