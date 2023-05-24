@@ -9,7 +9,7 @@ from df_chat.models import UserChat
 from djangochannelsrestframework.generics import GenericAsyncAPIConsumer
 from djangochannelsrestframework.observer import model_observer
 from djangochannelsrestframework.observer import ModelObserver
-
+from .serializers import AsyncMessageSerializer
 
 def post_init_receiver(self, instance, **kwargs):
     self.get_observer_state(instance).current_groups = set()
@@ -50,6 +50,16 @@ class RoomsConsumer(GenericAsyncAPIConsumer):
         # When the user disconnects, we should unsubscribe them from listening to all activities.
         await self.unsubscribe_from_all_activities()
         await self.user_disconnect()
+    
+    async def receive(self, text_data):
+        data = await self.decode_json(text_data)
+        extra_context = {"room_id": data.pop("room_id", None)}
+
+        context = self.get_serializer_context(**extra_context)
+        serializer = AsyncMessageSerializer(data=data, context=context)
+
+        await serializer.is_valid(raise_exception=True)
+        await serializer.save()
 
     @model_observer(RoomUser, serializer_class=RoomUserSerializer)
     async def room_user_activity(self, message: dict, **kwargs):
@@ -146,3 +156,8 @@ class RoomsConsumer(GenericAsyncAPIConsumer):
             if user_chat.is_online:
                 user_chat.is_online = False
                 user_chat.save()
+
+    def get_serializer_context(self, **kwargs):
+        context = super().get_serializer_context()
+        context.update(kwargs)
+        return context

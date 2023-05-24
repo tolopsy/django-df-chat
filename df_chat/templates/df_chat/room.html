@@ -45,17 +45,8 @@
         document.querySelector('#chat-message-submit').onclick = function(e) {
             const messageInputDom = document.querySelector('#chat-message-input');
             const message = messageInputDom.value;
-
-            fetch(`/api/v1/chat/rooms/${roomName}/messages/`, {
-              method: 'POST',
-              headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrftoken,
-                'Authorization': `Bearer ${token}`
-              },
-              body: JSON.stringify({body: message})
-            })
+            
+            chatSocket.send(JSON.stringify({body: message, room_id: roomName}));
 
             messageInputDom.value = '';
         };
@@ -64,16 +55,7 @@
             const messageInputDom = document.querySelector('#chat-message-input');
             const message = messageInputDom.value;
 
-            fetch(`/api/v1/chat/rooms/${roomName}/messages/`, {
-              method: 'POST',
-              headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrftoken,
-                'Authorization': `Bearer ${token}`
-              },
-              body: JSON.stringify({body: '+', parent_id: message, is_reaction: true})
-            })
+            chatSocket.send(JSON.stringify({body: '+', parent_id: message, is_reaction: true, room_id: roomName}));
 
             messageInputDom.value = '';
         };

@@ -132,13 +132,16 @@ class MessageSerializer(serializers.ModelSerializer):
     images = MessageImageSerializer(many=True, read_only=True)
     reactions = serializers.ListSerializer(child=RecursiveField(), read_only=True)
 
-    def validate(self, attrs):
-        attrs = super().validate(attrs)
-
-        attrs["room_user"] = RoomUser.objects.get_room_user(
+    def _get_room_user(self, **kwargs):
+        return RoomUser.objects.get_room_user(
             room_pk=self.context["view"].get_room().pk,
             user_pk=self.context["request"].user.id,
         )
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+
+        attrs["room_user"] = self._get_room_user()
         return attrs
 
     def create(self, validated_data):
